@@ -8,14 +8,13 @@ Data Agent - A self-learning data agent with 6 layers of context for grounded SQ
 
 ```
 da/
-├── agent.py              # Main agent (knowledge + learnings + memory)
+├── agent.py              # Main agent (knowledge + LearningMachine)
 ├── paths.py              # Path constants
 ├── context/
 │   ├── semantic_model.py # Layer 1: Table metadata
 │   └── business_rules.py # Layer 2: Business rules
 ├── tools/
 │   ├── introspect.py     # Layer 6: Runtime schema
-│   ├── learnings.py      # Layer 5: Search/save learnings
 │   └── save_query.py     # Save validated queries
 ├── scripts/
 │   ├── load_data.py      # Load F1 sample data
@@ -32,19 +31,36 @@ da/
 ./scripts/format.sh      # Format code
 ./scripts/validate.sh    # Lint + type check
 python -m da             # CLI mode
-python -m da.agent       # Test mode (runs test queries)
+python -m da.agent       # Test mode
 ```
 
-## Two Storage Systems
+## Architecture
 
-**Knowledge** (static, curated):
-- Table schemas, validated queries, business rules
-- Searched automatically via `search_knowledge=True`
-- Add queries with `save_validated_query`
+**Two Knowledge Bases:**
 
-**Learnings** (dynamic, discovered):
-- Patterns discovered through errors
-- Search with `search_learnings`, save with `save_learning`
+```python
+# KNOWLEDGE: Static, curated (table schemas, validated queries)
+data_agent_knowledge = Knowledge(...)
+
+# LEARNINGS: Dynamic, discovered (error patterns, gotchas)
+data_agent_learnings = Knowledge(...)
+
+data_agent = Agent(
+    knowledge=data_agent_knowledge,
+    search_knowledge=True,
+    learning=LearningMachine(
+        knowledge=data_agent_learnings,  # separate from static knowledge
+        user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),
+        user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),
+        learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
+    ),
+)
+```
+
+**LearningMachine provides:**
+- `search_learnings` / `save_learning` tools
+- `user_profile` - structured facts about user
+- `user_memory` - unstructured observations
 
 ## The 6 Layers
 
@@ -54,10 +70,8 @@ python -m da.agent       # Test mode (runs test queries)
 | 2. Business Rules | `knowledge/business/*.json` | `da/context/business_rules.py` |
 | 3. Query Patterns | `knowledge/queries/*.sql` | Loaded into knowledge base |
 | 4. External Knowledge | Exa MCP | `da/agent.py` |
-| 5. Learnings | Custom tools | `da/tools/learnings.py` |
+| 5. Learnings | LearningMachine | Separate knowledge base |
 | 6. Runtime Context | `introspect_schema` | `da/tools/introspect.py` |
-
-Plus `enable_agentic_memory=True` for user preferences.
 
 ## Data Quality (F1 Dataset)
 
@@ -74,16 +88,3 @@ Plus `enable_agentic_memory=True` for user preferences.
 | `OPENAI_API_KEY` | Yes | OpenAI API key |
 | `EXA_API_KEY` | No | Exa for web research |
 | `DB_*` | No | Database config |
-
-## Agno Reference
-
-```python
-from agno.agent import Agent
-from agno.knowledge import Knowledge
-from agno.models.openai import OpenAIResponses
-from agno.tools import tool
-from agno.tools.sql import SQLTools
-from agno.vectordb.pgvector import PgVector, SearchType
-
-# Docs: https://docs.agno.com/llms.txt
-```
