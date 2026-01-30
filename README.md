@@ -1,6 +1,6 @@
-# Data Agent
+# Dash
 
-A self-learning data agent inspired by [OpenAI's internal data agent](https://openai.com/index/inside-our-in-house-data-agent/).
+A self-learning data agent inspired by [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/).
 
 ## The 6 Layers of Context
 
