@@ -1,6 +1,6 @@
 # Data Agent
 
-A self-learning data agent inspired by [OpenAI's internal data agent](https://openai.com/index/how-openai-built-its-data-agent/).
+A self-learning data agent inspired by [OpenAI's internal data agent](https://openai.com/index/inside-our-in-house-data-agent/).
 
 ## The 6 Layers of Context
 
