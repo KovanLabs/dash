@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Dash - A self-learning data agent with 6 layers of context for grounded SQL generation. Inspired by [OpenAI's internal data agent](https://openai.com/index/how-openai-built-its-data-agent/).
+Dash is a self-learning data agent that delivers **insights, not just SQL results**. It grounds SQL generation in 6 layers of context and improves automatically with every query. Inspired by [OpenAI's in-house data agent](https://openai.com/index/how-openai-built-its-data-agent/).
 
 ## Structure
 
@@ -15,10 +15,10 @@ dash/
 │   ├── queries/          # Validated SQL queries
 │   └── business/         # Business rules and metrics
 ├── context/
-│   ├── semantic_model.py # Layer 1: Table metadata
-│   └── business_rules.py # Layer 2: Human annotations
+│   ├── semantic_model.py # Layer 1: Table usage
+│   └── business_rules.py # Layer 2: Business rules
 ├── tools/
-│   ├── introspect.py     # Layer 6: Runtime schema
+│   ├── introspect.py     # Layer 6: Runtime context
 │   └── save_query.py     # Save validated queries
 ├── scripts/
 │   ├── load_data.py      # Load F1 sample data
@@ -57,7 +57,12 @@ python -m dash.evals.run_evals -v           # Verbose mode
 
 ## Architecture
 
-**Two Knowledge Bases:**
+**Two Learning Systems:**
+
+| System | What It Stores | How It Evolves |
+|--------|---------------|----------------|
+| **Knowledge** | Validated queries, table metadata, business rules | Curated by you + Dash |
+| **Learnings** | Error patterns, type gotchas, discovered fixes | Managed by Learning Machine automatically |
 
 ```python
 # KNOWLEDGE: Static, curated (table schemas, validated queries)
@@ -78,20 +83,20 @@ data_agent = Agent(
 )
 ```
 
-**LearningMachine provides:**
+**Learning Machine provides:**
 - `search_learnings` / `save_learning` tools
 - `user_profile` - structured facts about user
 - `user_memory` - unstructured observations
 
-## The 6 Layers
+## The Six Layers of Context
 
 | Layer | Source | Code |
 |-------|--------|------|
-| 1. Table Metadata | `dash/knowledge/tables/*.json` | `dash/context/semantic_model.py` |
-| 2. Human Annotations | `dash/knowledge/business/*.json` | `dash/context/business_rules.py` |
+| 1. Table Usage | `dash/knowledge/tables/*.json` | `dash/context/semantic_model.py` |
+| 2. Business Rules | `dash/knowledge/business/*.json` | `dash/context/business_rules.py` |
 | 3. Query Patterns | `dash/knowledge/queries/*.sql` | Loaded into knowledge base |
 | 4. Institutional Knowledge | Exa MCP | `dash/agent.py` |
-| 5. Memory | LearningMachine | Separate knowledge base |
+| 5. Learnings | Learning Machine | Separate knowledge base |
 | 6. Runtime Context | `introspect_schema` | `dash/tools/introspect.py` |
 
 ## Data Quality (F1 Dataset)

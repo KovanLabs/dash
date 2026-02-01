@@ -86,7 +86,8 @@ Dash reasons about what makes an answer useful, not just technically correct.
 
 ```sh
 git clone https://github.com/agno-agi/dash.git && cd dash
-cp example.env .env  # Add OPENAI_API_KEY
+# Add OPENAI_API_KEY by adding to .env file or export OPENAI_API_KEY=sk-***
+cp example.env .env
 
 # Start
 docker compose up -d --build
