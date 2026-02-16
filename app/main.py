@@ -1,5 +1,5 @@
 """
-Dash API
+Dash AgentOS
 ========
 
 Production deployment entry point for Dash.
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from agno.os import AgentOS
 
-from dash.agents import dash
+from dash.agent import dash
 from db import get_postgres_db
 
 # ---------------------------------------------------------------------------

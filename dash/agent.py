@@ -1,6 +1,6 @@
 """
-Dash Agents
-===========
+Dash - Self-learning data agent
+===============================
 
 Test: python -m dash.agents
 """
@@ -23,13 +23,13 @@ from dash.tools import create_introspect_schema_tool, create_save_validated_quer
 from db import create_knowledge, db_url, get_postgres_db
 
 # ---------------------------------------------------------------------------
-# Database & Knowledge
+# Setup
 # ---------------------------------------------------------------------------
 agent_db = get_postgres_db()
 
+# Dual knowledge system
 # KNOWLEDGE: Static, curated (table schemas, validated queries, business rules)
 dash_knowledge = create_knowledge("Dash Knowledge", "dash_knowledge")
-
 # LEARNINGS: Dynamic, discovered (error patterns, gotchas, user corrections)
 dash_learnings = create_knowledge("Dash Learnings", "dash_learnings")
 
@@ -39,7 +39,7 @@ dash_learnings = create_knowledge("Dash Learnings", "dash_learnings")
 save_validated_query = create_save_validated_query_tool(dash_knowledge)
 introspect_schema = create_introspect_schema_tool(db_url)
 
-base_tools: list = [
+dash_tools: list = [
     SQLTools(db_url=db_url),
     save_validated_query,
     introspect_schema,
@@ -141,17 +141,14 @@ dash = Agent(
     model=OpenAIResponses(id="gpt-5.2"),
     db=agent_db,
     instructions=INSTRUCTIONS,
-    # Knowledge (static)
     knowledge=dash_knowledge,
     search_knowledge=True,
-    # Learning (provides search_learnings, save_learning)
     enable_agentic_memory=True,
     learning=LearningMachine(
         knowledge=dash_learnings,
         learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
     ),
-    tools=base_tools,
-    # Context
+    tools=dash_tools,
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
