@@ -8,59 +8,36 @@ Test: python -m dash.agents
 from os import getenv
 
 from agno.agent import Agent
-from agno.knowledge import Knowledge
-from agno.knowledge.embedder.openai import OpenAIEmbedder
 from agno.learn import (
     LearnedKnowledgeConfig,
     LearningMachine,
     LearningMode,
-    UserMemoryConfig,
-    UserProfileConfig,
 )
 from agno.models.openai import OpenAIResponses
 from agno.tools.mcp import MCPTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.sql import SQLTools
-from agno.vectordb.pgvector import PgVector, SearchType
 
 from dash.context.business_rules import BUSINESS_CONTEXT
 from dash.context.semantic_model import SEMANTIC_MODEL_STR
 from dash.tools import create_introspect_schema_tool, create_save_validated_query_tool
-from db import db_url, get_postgres_db
+from db import create_knowledge, db_url, get_postgres_db
 
-# ============================================================================
+# ---------------------------------------------------------------------------
 # Database & Knowledge
-# ============================================================================
+# ---------------------------------------------------------------------------
 
 agent_db = get_postgres_db()
 
 # KNOWLEDGE: Static, curated (table schemas, validated queries, business rules)
-dash_knowledge = Knowledge(
-    name="Dash Knowledge",
-    vector_db=PgVector(
-        db_url=db_url,
-        table_name="dash_knowledge",
-        search_type=SearchType.hybrid,
-        embedder=OpenAIEmbedder(id="text-embedding-3-small"),
-    ),
-    contents_db=get_postgres_db(contents_table="dash_knowledge_contents"),
-)
+dash_knowledge = create_knowledge("Dash Knowledge", "dash_knowledge")
 
 # LEARNINGS: Dynamic, discovered (error patterns, gotchas, user corrections)
-dash_learnings = Knowledge(
-    name="Dash Learnings",
-    vector_db=PgVector(
-        db_url=db_url,
-        table_name="dash_learnings",
-        search_type=SearchType.hybrid,
-        embedder=OpenAIEmbedder(id="text-embedding-3-small"),
-    ),
-    contents_db=get_postgres_db(contents_table="dash_learnings_contents"),
-)
+dash_learnings = create_knowledge("Dash Learnings", "dash_learnings")
 
-# ============================================================================
+# ---------------------------------------------------------------------------
 # Tools
-# ============================================================================
+# ---------------------------------------------------------------------------
 
 save_validated_query = create_save_validated_query_tool(dash_knowledge)
 introspect_schema = create_introspect_schema_tool(db_url)
@@ -72,9 +49,9 @@ base_tools: list = [
     MCPTools(url=f"https://mcp.exa.ai/mcp?exaApiKey={getenv('EXA_API_KEY', '')}&tools=web_search_exa"),
 ]
 
-# ============================================================================
+# ---------------------------------------------------------------------------
 # Instructions
-# ============================================================================
+# ---------------------------------------------------------------------------
 
 INSTRUCTIONS = f"""\
 You are Dash, a self-learning data agent that provides **insights**, not just query results.
@@ -159,11 +136,12 @@ save_learning(
 {BUSINESS_CONTEXT}\
 """
 
-# ============================================================================
+# ---------------------------------------------------------------------------
 # Create Agent
-# ============================================================================
+# ---------------------------------------------------------------------------
 
 dash = Agent(
+    id="dash",
     name="Dash",
     model=OpenAIResponses(id="gpt-5.2"),
     db=agent_db,
@@ -171,11 +149,10 @@ dash = Agent(
     # Knowledge (static)
     knowledge=dash_knowledge,
     search_knowledge=True,
-    # Learning (provides search_learnings, save_learning, user profile, user memory)
+    # Learning (provides search_learnings, save_learning)
+    enable_agentic_memory=True,
     learning=LearningMachine(
         knowledge=dash_learnings,
-        user_profile=UserProfileConfig(mode=LearningMode.AGENTIC),
-        user_memory=UserMemoryConfig(mode=LearningMode.AGENTIC),
         learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
     ),
     tools=base_tools,
@@ -195,5 +172,8 @@ reasoning_dash = dash.deep_copy(
     }
 )
 
+# ---------------------------------------------------------------------------
+# Run Agent
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     dash.print_response("Who won the most races in 2019?", stream=True)

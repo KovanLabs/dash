@@ -4,13 +4,15 @@ Dash is a **self-learning data agent** that grounds its answers in **6 layers of
 
 Inspired by [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/).
 
-## Quick Start
+## Get Started
 
 ```sh
-# Clone this repo
+# Clone the repo
 git clone https://github.com/agno-agi/dash.git && cd dash
-# Add OPENAI_API_KEY by adding to .env file or export OPENAI_API_KEY=sk-***
+
+# Add OPENAI_API_KEY
 cp example.env .env
+# Edit .env and add your key
 
 # Start the application
 docker compose up -d --build
@@ -20,7 +22,7 @@ docker exec -it dash-api python -m dash.scripts.load_data
 docker exec -it dash-api python -m dash.scripts.load_knowledge
 ```
 
-Confirm dash is running by navigation to [http://localhost:8000/docs](http://localhost:8000/docs).
+Confirm dash is running at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ## Connect to the Web UI
 
@@ -238,7 +240,7 @@ python -m dash  # CLI mode
 | `EXA_API_KEY` | No | Web search for external knowledge |
 | `DB_*` | No | Database config (defaults to localhost) |
 
-## Further Reading
+## Learn More
 
 - [OpenAI's In-House Data Agent](https://openai.com/index/inside-our-in-house-data-agent/) — the inspiration
 - [Self-Improving SQL Agent](https://www.ashpreetbedi.com/articles/sql-agent) — deep dive on an earlier architecture
