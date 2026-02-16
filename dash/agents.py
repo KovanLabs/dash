@@ -15,7 +15,6 @@ from agno.learn import (
 )
 from agno.models.openai import OpenAIResponses
 from agno.tools.mcp import MCPTools
-from agno.tools.reasoning import ReasoningTools
 from agno.tools.sql import SQLTools
 
 from dash.context.business_rules import BUSINESS_CONTEXT
@@ -26,7 +25,6 @@ from db import create_knowledge, db_url, get_postgres_db
 # ---------------------------------------------------------------------------
 # Database & Knowledge
 # ---------------------------------------------------------------------------
-
 agent_db = get_postgres_db()
 
 # KNOWLEDGE: Static, curated (table schemas, validated queries, business rules)
@@ -38,7 +36,6 @@ dash_learnings = create_knowledge("Dash Learnings", "dash_learnings")
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
-
 save_validated_query = create_save_validated_query_tool(dash_knowledge)
 introspect_schema = create_introspect_schema_tool(db_url)
 
@@ -52,7 +49,6 @@ base_tools: list = [
 # ---------------------------------------------------------------------------
 # Instructions
 # ---------------------------------------------------------------------------
-
 INSTRUCTIONS = f"""\
 You are Dash, a self-learning data agent that provides **insights**, not just query results.
 
@@ -139,7 +135,6 @@ save_learning(
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-
 dash = Agent(
     id="dash",
     name="Dash",
@@ -162,14 +157,6 @@ dash = Agent(
     read_chat_history=True,
     num_history_runs=5,
     markdown=True,
-)
-
-# Reasoning variant - adds multi-step reasoning capabilities
-reasoning_dash = dash.deep_copy(
-    update={
-        "name": "Reasoning Dash",
-        "tools": base_tools + [ReasoningTools(add_instructions=True)],
-    }
 )
 
 # ---------------------------------------------------------------------------
