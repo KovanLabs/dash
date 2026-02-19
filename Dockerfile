@@ -20,6 +20,7 @@ WORKDIR ${APP_DIR}
 # Install dependencies first (better layer caching)
 COPY requirements.txt ./
 RUN uv pip sync requirements.txt --system
+RUN pip install google-genai
 
 # Copy app code
 COPY --chown=${USER}:${USER} . .

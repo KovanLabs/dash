@@ -13,7 +13,7 @@ from agno.learn import (
     LearningMachine,
     LearningMode,
 )
-from agno.models.openai import OpenAIResponses
+from agno.models.google import Gemini
 from agno.tools.mcp import MCPTools
 from agno.tools.sql import SQLTools
 
@@ -138,7 +138,7 @@ save_learning(
 dash = Agent(
     id="dash",
     name="Dash",
-    model=OpenAIResponses(id="gpt-5.2"),
+    model=Gemini(id="gemini-2.5-flash"),
     db=agent_db,
     instructions=INSTRUCTIONS,
     knowledge=dash_knowledge,

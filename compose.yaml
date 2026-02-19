@@ -4,7 +4,7 @@ services:
     container_name: dash-db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql
     environment:
@@ -38,7 +38,7 @@ services:
       DB_DATABASE: ${DB_DATABASE:-ai}
       WAIT_FOR_DB: "True"
       PRINT_ENV_ON_LOAD: "True"
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       EXA_API_KEY: ${EXA_API_KEY:-}
     depends_on:
       - dash-db
@@ -49,6 +49,7 @@ services:
 
 networks:
   dash:
+
 
 volumes:
   pgdata:

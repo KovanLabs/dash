@@ -38,7 +38,7 @@ markupsafe==3.0.3
 mcp==1.26.0
 mdurl==0.1.2
 numpy==2.4.2
-openai==2.21.0
+google-genai>=1.10.0
 openinference-instrumentation==0.1.44
 openinference-instrumentation-agno==0.1.28
 openinference-semantic-conventions==0.1.26

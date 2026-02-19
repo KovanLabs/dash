@@ -10,9 +10,9 @@ authors = [{ name = "Agno", email = "hello@agno.com" }]
 dependencies = [
   "agno",
   "fastapi[standard]",
+  "google-genai",
   "httpx",
   "mcp",
-  "openai",
   "openinference-instrumentation-agno",
   "opentelemetry-api",
   "opentelemetry-sdk",

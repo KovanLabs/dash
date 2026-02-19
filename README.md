@@ -1,248 +1,252 @@
-# Dash
+# Dash — Gemini Edition
 
-Dash is a **self-learning data agent** that grounds its answers in **6 layers of context** and improves with every run.
+A **self-learning data agent** that answers questions in plain English by querying your database — powered by **Google Gemini** instead of OpenAI.
 
-Inspired by [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/).
+> **Forked from** [agno-agi/dash](https://github.com/agno-agi/dash) — replaced OpenAI GPT + embeddings with Google Gemini 2.5 Flash + Gemini Embeddings, fixed Docker entrypoint line-ending issues for Windows, and documented the full local setup process below.
 
-## Get Started
+---
+
+## What it does
+
+Ask a question in English → Dash writes SQL → runs it → returns an **insight, not just rows**.
+
+> **"Who won the most races in 2019?"**
+> → *Lewis Hamilton dominated 2019 with 11 wins out of 21 races (52%), more than double Bottas's 4 wins.*
+
+It improves itself over time — every SQL error it makes and corrects gets stored as a **learning** so the same mistake never happens twice.
+
+---
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- A **Google Gemini API key** — get one free at [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- **No Python install needed** — everything runs inside Docker
+
+> **Windows users:** If you have PostgreSQL installed locally (port 5432 already in use), see the [Port Conflict](#port-conflict-windows) section below.
+
+---
+
+## Quick Start
+
+### 1. Clone
 
 ```sh
-# Clone the repo
-git clone https://github.com/agno-agi/dash.git && cd dash
+git clone https://github.com/KovanLabs/dash.git
+cd dash
+```
 
-# Add OPENAI_API_KEY
+### 2. Set your API key
+
+```sh
 cp example.env .env
-# Edit .env and add your key
+```
 
-# Start the application
+Edit `.env` and add your Google API key:
+
+```env
+GOOGLE_API_KEY=your_key_here
+```
+
+The rest of the defaults work out of the box — no DB setup needed.
+
+### 3. Build and start
+
+```sh
 docker compose up -d --build
+```
 
-# Load sample data and knowledge
+This starts two containers:
+- `dash-db` — PostgreSQL + pgvector (stores data, knowledge, learnings)
+- `dash-api` — the Dash agent API
+
+Wait ~30 seconds for the DB to initialize.
+
+### 4. Load sample data (F1 dataset)
+
+```sh
 docker exec -it dash-api python -m dash.scripts.load_data
+```
+
+Loads 27,458 rows across 5 F1 tables (races, wins, championships, fastest laps — 1950 to 2020).
+
+### 5. Load knowledge base
+
+```sh
 docker exec -it dash-api python -m dash.scripts.load_knowledge
 ```
 
-Confirm dash is running at [http://localhost:8000/docs](http://localhost:8000/docs).
+This uses **Gemini Embeddings** to vectorize the knowledge files and stores them in pgvector. This is what lets the agent understand your schema.
+
+### 6. Verify it's running
+
+Open [http://localhost:8000/docs](http://localhost:8000/docs) — you should see the FastAPI Swagger UI.
+
+### 7. Try it
+
+```sh
+# Interactive CLI
+docker exec -it dash-api python -m dash
+```
+
+**Sample questions with the F1 dataset:**
+- Who won the most F1 World Championships?
+- How many races has Lewis Hamilton won?
+- Compare Ferrari vs Mercedes points from 2015 to 2020
+- Which circuit has the most race wins for Ayrton Senna?
+
+---
 
 ## Connect to the Web UI
 
-1. Open [os.agno.com](https://os.agno.com) and login
+1. Open [os.agno.com](https://os.agno.com) and log in
 2. Add OS → Local → `http://localhost:8000`
-3. Click "Connect"
+3. Click **Connect**
 
-**Try it** (sample F1 dataset):
+---
 
-- Who won the most F1 World Championships?
-- How many races has Lewis Hamilton won?
-- Compare Ferrari vs Mercedes points 2015-2020
+## Port Conflict (Windows)
 
-## Why Text-to-SQL Breaks in Practice
+If you have PostgreSQL installed natively on Windows, it already uses port 5432. The Docker DB will conflict with it.
 
-Our goal is simple: ask a question in english, get a correct, meaningful answer. But raw LLMs writing SQL hit a wall fast:
+The `compose.yaml` is already configured to use port **5433** for the Docker DB. Connect pgAdmin or any DB client with:
 
-- **Schemas lack meaning.**
-- **Types are misleading.**
-- **Tribal knowledge is missing.**
-- **No way to learn from mistakes.**
-- **Results generally lack interpretation.**
+| Field | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `5433` |
+| Database | `ai` |
+| Username | `ai` |
+| Password | `ai` |
 
-The root cause is missing context and missing memory.
+---
 
-Dash solves this with **6 layers of grounded context**, a **self-learning loop** that improves with every query, and a focus on **understanding your question** to deliver insights you can act on.
+## How Knowledge Works
 
-## The Six Layers of Context
-
-| Layer | Purpose | Source |
-|------|--------|--------|
-| **Table Usage** | Schema, columns, relationships | `knowledge/tables/*.json` |
-| **Human Annotations** | Metrics, definitions, and business rules | `knowledge/business/*.json` |
-| **Query Patterns** | SQL that is known to work | `knowledge/queries/*.sql` |
-| **Institutional Knowledge** | Docs, wikis, external references | MCP (optional) |
-| **Learnings** | Error patterns and discovered fixes | Agno `Learning Machine` |
-| **Runtime Context** | Live schema changes | `introspect_schema` tool |
-
-The agent retrieves relevant context at query time via hybrid search, then generates SQL grounded in patterns that already work.
-
-## The Self-Learning Loop
-
-Dash improves without retraining or fine-tuning. We call this gpu-poor continuous learning.
-
-It learns through two complementary systems:
-
-| System | Stores | How It Evolves |
-|------|--------|----------------|
-| **Knowledge** | Validated queries and business context | Curated by you + dash |
-| **Learnings** | Error patterns and fixes | Managed by `Learning Machine` automatically |
+The agent uses **7 knowledge files** to understand your schema before writing SQL:
 
 ```
-User Question
-     ↓
-Retrieve Knowledge + Learnings
-     ↓
-Reason about intent
-     ↓
-Generate grounded SQL
-     ↓
-Execute and interpret
-     ↓
- ┌────┴────┐
- ↓         ↓
-Success    Error
- ↓         ↓
- ↓         Diagnose → Fix → Save Learning
- ↓                           (never repeated)
- ↓
-Return insight
- ↓
-Optionally save as Knowledge
+dash/knowledge/
+├── tables/          # Column types, gotchas, use cases per table
+│   ├── race_wins.json
+│   ├── race_results.json
+│   ├── drivers_championship.json
+│   ├── constructors_championship.json
+│   └── fastest_laps.json
+├── business/        # Metric definitions, business rules, known pitfalls
+│   └── metrics.json
+└── queries/         # Proven SQL patterns as examples
+    └── common_queries.sql
 ```
 
-**Knowledge** is curated—validated queries and business context you want the agent to build on.
+At query time:
+1. User question → **Gemini embedding** → vector similarity search against `dash_knowledge`
+2. Most relevant schema docs, gotchas, and SQL examples retrieved
+3. Context injected into prompt → Gemini writes grounded SQL
+4. SQL executed → result interpreted → insight returned
 
-**Learnings** is discovered—patterns the agent finds through trial and error. When a query fails because `position` is TEXT not INTEGER, the agent saves that gotcha. Next time, it knows.
+### Self-Learning
 
-## Insights, Not Just Rows
+When SQL fails, the agent:
+1. Diagnoses the error
+2. Fixes the SQL
+3. **Saves the fix** to `dash_learnings` (with Gemini embedding)
+4. Next time a similar question is asked → the fix is retrieved and the mistake is not repeated
 
-Dash reasons about what makes an answer useful, not just technically correct.
+Watch it learn:
+```sql
+-- Connect to DB and run:
+SELECT name, content, created_at FROM dash_learnings ORDER BY created_at DESC;
+```
 
-**Question:**
-Who won the most races in 2019?
+---
 
-| Typical SQL Agent | Dash |
-|------------------|------|
-| `Hamilton: 11` | Lewis Hamilton dominated 2019 with **11 wins out of 21 races**, more than double Bottas’s 4 wins. This performance secured his sixth world championship. |
+## Add Your Own Data
 
-## Deploy to Railway
+### 1. Load your tables
 
 ```sh
-railway login
-
-./scripts/railway_up.sh
+docker exec -it dash-db psql -U ai -d ai
 ```
 
-### Production Operations
-
-**Load data and knowledge:**
-```sh
-railway run python -m dash.scripts.load_data
-railway run python -m dash.scripts.load_knowledge
+```sql
+CREATE TABLE your_table (...);
+\COPY your_table FROM '/path/to/data.csv' CSV HEADER;
 ```
 
-**View logs:**
+### 2. Create a knowledge file
 
-```sh
-railway logs --service dash
-```
-
-**Run commands in production:**
-
-```sh
-railway run python -m dash  # CLI mode
-```
-
-**Redeploy after changes:**
-
-```sh
-railway up --service dash -d
-```
-
-**Open dashboard:**
-```sh
-railway open
-```
-
-## Adding Knowledge
-
-Dash works best when it understands how your organization talks about data.
-
-```
-knowledge/
-├── tables/      # Table meaning and caveats
-├── queries/     # Proven SQL patterns
-└── business/    # Metrics and language
-```
-
-### Table Metadata
-
-```
+```json
+// dash/knowledge/tables/your_table.json
 {
-  "table_name": "orders",
-  "table_description": "Customer orders with denormalized line items",
-  "use_cases": ["Revenue reporting", "Customer analytics"],
+  "table_name": "your_table",
+  "table_description": "What this table contains",
+  "use_cases": ["Use case 1", "Use case 2"],
   "data_quality_notes": [
-    "created_at is UTC",
-    "status values: pending, completed, refunded",
-    "amount stored in cents"
-  ]
-}
-```
-
-### Query Patterns
-
-```
--- <query name>monthly_revenue</query name>
--- <query description>
--- Monthly revenue calculation.
--- Converts cents to dollars.
--- Excludes refunded orders.
--- </query description>
--- <query>
-SELECT
-    DATE_TRUNC('month', created_at) AS month,
-    SUM(amount) / 100.0 AS revenue_dollars
-FROM orders
-WHERE status = 'completed'
-GROUP BY 1
-ORDER BY 1 DESC
--- </query>
-```
-
-### Business Rules
-
-```
-{
-  "metrics": [
-    {
-      "name": "MRR",
-      "definition": "Sum of active subscriptions excluding trials"
-    }
+    "Any gotchas about data types",
+    "Any known edge cases"
   ],
-  "common_gotchas": [
-    {
-      "issue": "Revenue double counting",
-      "solution": "Filter to completed orders only"
-    }
+  "table_columns": [
+    {"name": "col_name", "type": "text", "description": "What this column means"}
   ]
 }
 ```
 
-### Load Knowledge
+### 3. Reload knowledge
 
 ```sh
-python -m dash.scripts.load_knowledge            # Upsert changes
-python -m dash.scripts.load_knowledge --recreate # Fresh start
+docker exec -it dash-api python -m dash.scripts.load_knowledge --recreate
 ```
 
-## Local Development
+---
+
+## Useful Commands
 
 ```sh
-./scripts/venv_setup.sh && source .venv/bin/activate
-docker compose up -d dash-db
-python -m dash.scripts.load_data
-python -m dash  # CLI mode
+# Start / stop
+docker compose up -d
+docker compose down
+
+# Stream logs
+docker compose logs -f dash-api
+
+# Reload knowledge after changes
+docker exec dash-api python -m dash.scripts.load_knowledge --recreate
+
+# Browse DB directly
+docker exec -it dash-db psql -U ai -d ai
 ```
+
+---
+
+## What Changed from the Original
+
+| Area | Original (agno-agi/dash) | This fork |
+|------|--------------------------|-----------|
+| LLM | OpenAI GPT-5.2 | Google Gemini 2.5 Flash |
+| Embeddings | OpenAI text-embedding-3-small | Gemini Embedder |
+| API key | `OPENAI_API_KEY` | `GOOGLE_API_KEY` |
+| Docker DB port | 5432 | 5433 (avoids Windows conflict) |
+| Dependencies | `openai` | `google-genai` |
+| Bug fix | — | `entrypoint.sh` CRLF→LF for Windows |
+
+---
 
 ## Environment Variables
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | Yes | OpenAI API key |
+|---|---|---|
+| `GOOGLE_API_KEY` | **Yes** | Google Gemini API key |
 | `EXA_API_KEY` | No | Web search for external knowledge |
-| `DB_*` | No | Database config (defaults to localhost) |
+| `DB_USER` | No | Default: `ai` |
+| `DB_PASS` | No | Default: `ai` |
+| `DB_DATABASE` | No | Default: `ai` |
+
+---
 
 ## Learn More
 
-- [OpenAI's In-House Data Agent](https://openai.com/index/inside-our-in-house-data-agent/) — the inspiration
-- [Self-Improving SQL Agent](https://www.ashpreetbedi.com/articles/sql-agent) — deep dive on an earlier architecture
+- [Original Dash by Agno](https://github.com/agno-agi/dash) — the upstream project
 - [Agno Docs](https://docs.agno.com)
-- [Discord](https://agno.com/discord)
+- [Google Gemini API](https://aistudio.google.com)
+- [OpenAI's In-House Data Agent](https://openai.com/index/inside-our-in-house-data-agent/) — the inspiration for Dash
